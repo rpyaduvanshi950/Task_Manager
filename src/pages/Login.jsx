@@ -1,17 +1,21 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth, googleProvider } from "../lib/firebase";
-import { signInWithPopup, signInWithRedirect, isSignInWithEmailLink } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useAuth();
+
+  const destination = location.state?.from?.pathname || "/dashboard";
 
   async function handleGoogle() {
     try {
       // Popup is easiest for local dev; fallback to redirect on popup blockers
       await signInWithPopup(auth, googleProvider);
-      navigate("/dashboard"); // or /dashboard
+      navigate(destination, { replace: true });
     } catch (e) {
       // Some browsers/environments block popups
       await signInWithRedirect(auth, googleProvider);
@@ -26,10 +30,12 @@ export default function Login() {
     );
   }
 
-  if (user) {
-    navigate("/dashboard"); // already signed in
-    return null;
-  }
+  // Avoid navigating during render — perform redirect in an effect
+  useEffect(() => {
+    if (!loading && user) {
+      navigate(destination, { replace: true });
+    }
+  }, [user, loading, navigate, destination]);
 
   return (
     <div className="min-h-screen w-full bg-[#0b0b12] text-white flex items-center justify-center px-6">
